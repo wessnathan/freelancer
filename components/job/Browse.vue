@@ -5,28 +5,24 @@
       <p v-if="subtitle" class="text-subtitle-1 text-medium-emphasis mt-2">
         {{ subtitle }}
       </p>
-      <v-tabs v-model="discovery" class="mt-4" color="">
-        <v-tab class="font-weight-medium" value="most_recent">
-          Most Recent
-        </v-tab>
-        <v-tab class="font-weight-medium" value="best_match">
-          Best Matches
-        </v-tab>
-        <v-tab class="font-weight-medium" value="bookmarks">
-          Bookmarked Jobs
-        </v-tab>
-      </v-tabs>
-      <v-divider />
 
+      <v-tabs v-model="discovery" class="mt-4" color="">
+        <v-tab class="font-weight-medium" value="most_recent">Most Recent</v-tab>
+        <v-tab class="font-weight-medium" value="best_match">Best Matches</v-tab>
+        <v-tab class="font-weight-medium" value="bookmarks">Bookmarked Jobs</v-tab>
+        <v-tab class="font-weight-medium" value="applied_jobs">Applied Jobs</v-tab>
+      </v-tabs>
+
+      <v-divider />
       <div class="my-4" />
 
-      <div v-for="job in jobStore.availableJobs" :key="job.id">
+      <div v-for="job in jobsList" :key="job.id">
         <JobCard :job />
         <v-divider class="my-3" />
       </div>
 
       <v-empty-state
-        v-if="jobStore.availableJobs && !jobStore.isLoading"
+        v-if="!jobsList.length && !jobStore.isLoading"
         title="No Jobs"
         text="No jobs available."
         icon="mdi-book-off-outline"
@@ -53,30 +49,44 @@ const props = defineProps<{
   search?: string;
   filters?: Record<string, any>;
 }>();
+
 const discovery = ref("most_recent");
 const page = ref(1);
 
-// jobs
 const jobStore = useFreelancerJobsStore();
-async function fetchJobs() {
-  const params = {
-    page: page.value,
-    ...(props.search && { search: props.search }),
-    ...(discovery.value && { match_type: discovery.value }),
-    ...(props.filters?.experience && { level: props.filters.experience }),
-    ...(props.filters?.bidsReceived && {
-      application_count: props.filters.bidsReceived,
-    }),
-  };
 
-  console.log(`Fetching jobs with params: ${JSON.stringify(params)} `);
+const jobsList = computed(() =>
+  discovery.value === "applied_jobs" ? jobStore.appliedJobs : jobStore.availableJobs
+);
+
+async function fetchJobs() {
+  console.log(`Fetching jobs with params: ${JSON.stringify({ page: page.value, match_type: discovery.value })}`);
+
+  if (discovery.value === "applied_jobs") {
+    // Fetch applied jobs separately
+    await jobStore.fetchAppliedJobs();
+    return;
+  }
+
+  const params: Record<string, any> = {
+    page: page.value,
+    match_type: discovery.value,
+    ...(props.search && { search: props.search }),
+    ...(props.filters?.experience && { level: props.filters.experience }),
+    ...(props.filters?.bidsReceived && { application_count: props.filters.bidsReceived }),
+  };
 
   await jobStore.fetchAvailableJobs(params);
 }
+
+
+
+// Initial fetch
 onMounted(async () => {
   await fetchJobs();
 });
 
+// Watchers
 watch([discovery, props.filters, page], async () => await fetchJobs());
 watch(
   () => props.search,

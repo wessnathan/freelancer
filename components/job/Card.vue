@@ -20,10 +20,11 @@
             {{ moment(job.deadline_date).diff(job.posted_date, "days") }} days
           </p>
         </div>
+
         <div class="d-flex ga-2 my-2 my-sm-0">
+          <!-- Bookmark button -->
           <v-btn
             variant="outlined"
-            color=""
             :size="$vuetify.display.mobile ? 'default' : 'large'"
             class="pa-0"
             :loading="jobStore.isBookMarking"
@@ -35,6 +36,8 @@
               :color="job.bookmarked ? 'red' : 'grey'"
             />
           </v-btn>
+
+          <!-- View Job button -->
           <v-btn
             text="View Job"
             :size="$vuetify.display.mobile ? 'default' : 'large'"
@@ -42,6 +45,19 @@
             :width="$vuetify.display.mobile ? undefined : '150'"
             :to="`/freelancer/jobs/${job.slug}`"
           />
+
+          <!-- Withdraw button for applied jobs -->
+          <v-btn
+            v-if="job.has_applied"
+            color="red"
+            variant="outlined"
+            :size="$vuetify.display.mobile ? 'default' : 'large'"
+             :width="$vuetify.display.mobile ? undefined : '150'"
+            :loading="withdrawing"
+            @click="withdrawApplication"
+          >
+            Withdraw
+          </v-btn>
         </div>
       </div>
 
@@ -85,15 +101,28 @@ import moment from "moment";
 import type { IFreelancerJobListing } from "~/types/freelancer";
 import { useFreelancerJobsStore } from "~/store/freelancer/jobs";
 
-const props = defineProps<{
-  job: IFreelancerJobListing;
-}>();
-
+const props = defineProps<{ job: IFreelancerJobListing }>();
 const jobStore = useFreelancerJobsStore();
+
+// Bookmark handlers
 async function markBookMark() {
   await jobStore.bookmarkJob(props.job.slug);
 }
 async function removeBookMark() {
   await jobStore.removeBookmarkJob(props.job.slug);
+}
+
+// Withdraw applied job
+const withdrawing = ref(false);
+
+async function withdrawApplication() {
+  if (!props.job.slug) return;
+
+  try {
+    withdrawing.value = true;
+    await jobStore.unapplyJob(props.job.slug);
+  } finally {
+    withdrawing.value = false;
+  }
 }
 </script>

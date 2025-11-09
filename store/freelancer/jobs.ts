@@ -199,6 +199,45 @@ export const useFreelancerJobsStore = defineStore("freelancerJobs", () => {
     }
   }
 
+  /**
+ * Unapplies from a job the freelancer has previously applied to.
+ * @param slug The slug of the job to unapply from.
+ */
+async function unapplyJob(slug: string) {
+  try {
+    isLoading.value = true; // ✅ mutate the ref, don’t reassign
+    await $apiClient(`/jobs/${slug}/unapply/`, { method: "DELETE" });
+
+    // Remove job from availableJobs dynamically
+    availableJobs.value = availableJobs.value.filter((job) => job.slug !== slug);
+
+    // show success snackbar
+    appStore.showSnackBar({
+      type: "success",
+      message: "Application withdrawn successfully.",
+    });
+  } catch (err: any) {
+    console.error("Failed to withdraw application:", err);
+    appStore.showSnackBar({
+      type: "error",
+      message: "Failed to withdraw from the job.",
+    });
+    return Promise.reject(err);
+  } finally {
+    isLoading.value = false; // ✅ set the ref back to false
+  }
+}
+
+ async function fetchAppliedJobs() {
+    try {
+      isLoading.value = true;
+      const data = await $apiClient("/jobs/applied/by-freelancer/");
+      availableJobs.value = data;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
 
   /**
    * Fetches a paginated list of the authenticated freelancer's own job applications.
@@ -241,7 +280,7 @@ export const useFreelancerJobsStore = defineStore("freelancerJobs", () => {
       isLoading.value = false;
     }
   }
-
+  
   /**
    * Fetches the details of a specific job application.
    * @param jobSlug The slug of the job related to the application.
@@ -340,6 +379,7 @@ export const useFreelancerJobsStore = defineStore("freelancerJobs", () => {
 
   return {
     availableJobs,
+    unapplyJob,
     currentJob,
     myApplications,
     dashboardMetrics,
@@ -350,6 +390,7 @@ export const useFreelancerJobsStore = defineStore("freelancerJobs", () => {
     hasAvailableJobs,
     hasCurrentJob,
     hasMyApplications,
+    fetchAppliedJobs,
     fetchAvailableJobs,
     fetchJobDetails,
     applyForJob,
