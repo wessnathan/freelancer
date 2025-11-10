@@ -326,7 +326,7 @@ export const useClientJobsStore = defineStore("clientJobs", () => {
       });
       return response;
     } catch (error: any) {
-      console.error(
+      console.log(
         `Failed to reject application ${applicationId} for job ${jobSlug}:`,
         error
       );

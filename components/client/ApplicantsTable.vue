@@ -276,24 +276,37 @@ async function hireCandidate() {
 async function unassignJob() {
   if (!selectedItem.value) return;
 
-  await clientJobStore
-    .unassignApplication(route.params.id as string, selectedItem.value.user.username)
-    .then(() => {
-      // Reset status to 'pending' or remove assigned freelancer
-      const candidateIndex = clientJobStore.applications.findIndex(
-        c => c.user.username === selectedItem.value?.user.username
-      );
-      if (candidateIndex !== -1) {
-        clientJobStore.applications[candidateIndex].status = 'pending';
-      }
+  try {
+    await clientJobStore.rejectApplication(
+      route.params.id as string, // job slug
+      selectedItem.value.user.username // pass username
+    );
 
-      unassignJobDialog.value = false;
-      appStore.showSnackBar({
-        type: 'success',
-        message: 'Job unassigned successfully',
-      });
+    // Update local state
+    const candidateIndex = clientJobStore.applications.findIndex(
+      (c) => c.user.username === selectedItem.value?.user.username
+    );
+    if (candidateIndex !== -1) {
+      clientJobStore.applications[candidateIndex].status = "rejected";
+    }
+
+    // Refresh job details if you want to clear assigned freelancer info
+    await clientJobStore.fetchJobDetails(route.params.id as string);
+
+    unassignJobDialog.value = false;
+    appStore.showSnackBar({
+      type: "success",
+      message: "Freelancer unassigned successfully.",
     });
-}
+  } catch (error) {
+    console.error("Error unassigning freelancer:", error);
+    appStore.showSnackBar({
+      type: "error",
+      message: "Failed to unassign freelancer.",
+    });
+  }
+};
+
 
 </script>
 
