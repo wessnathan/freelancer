@@ -176,17 +176,21 @@ export const useFreelancerJobsStore = defineStore("freelancerJobs", () => {
   }) {
     isLoading.value = true;
     try {
-      const response = await $apiClient<
-        PaginatedResponse<IFreelancerJobListing>
-      >("/jobs/applied/by-freelancer/", {
+      const response = await $apiClient("/jobs/applied/by-freelancer/", {
         method: "GET",
         query: params,
       });
 
-      appliedJobs.value = response.results;
-      totalAppliedJobsCount.value = response.count;
+      // Check if response is paginated or not
+      if (Array.isArray(response)) {
+        appliedJobs.value = response;
+        totalAppliedJobsCount.value = response.length;
+      } else {
+        appliedJobs.value = response.results ?? [];
+        totalAppliedJobsCount.value = response.count ?? 0;
+      }
 
-      return response.results;
+      return appliedJobs.value;
     } catch (error: any) {
       console.error("Failed to fetch applied jobs:", error);
       appStore.showSnackBar({
@@ -194,45 +198,6 @@ export const useFreelancerJobsStore = defineStore("freelancerJobs", () => {
         message: "Failed to load applied jobs.",
       });
       return Promise.reject(error);
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  /**
- * Unapplies from a job the freelancer has previously applied to.
- * @param slug The slug of the job to unapply from.
- */
-async function unapplyJob(slug: string) {
-  try {
-    isLoading.value = true; // ✅ mutate the ref, don’t reassign
-    await $apiClient(`/jobs/${slug}/unapply/`, { method: "DELETE" });
-
-    // Remove job from availableJobs dynamically
-    availableJobs.value = availableJobs.value.filter((job) => job.slug !== slug);
-
-    // show success snackbar
-    appStore.showSnackBar({
-      type: "success",
-      message: "Application withdrawn successfully.",
-    });
-  } catch (err: any) {
-    console.error("Failed to withdraw application:", err);
-    appStore.showSnackBar({
-      type: "error",
-      message: "Failed to withdraw from the job.",
-    });
-    return Promise.reject(err);
-  } finally {
-    isLoading.value = false; // ✅ set the ref back to false
-  }
-}
-
- async function fetchAppliedJobs() {
-    try {
-      isLoading.value = true;
-      const data = await $apiClient("/jobs/applied/by-freelancer/");
-      availableJobs.value = data;
     } finally {
       isLoading.value = false;
     }
@@ -280,7 +245,7 @@ async function unapplyJob(slug: string) {
       isLoading.value = false;
     }
   }
-  
+
   /**
    * Fetches the details of a specific job application.
    * @param jobSlug The slug of the job related to the application.
@@ -379,7 +344,6 @@ async function unapplyJob(slug: string) {
 
   return {
     availableJobs,
-    unapplyJob,
     currentJob,
     myApplications,
     dashboardMetrics,
@@ -390,7 +354,6 @@ async function unapplyJob(slug: string) {
     hasAvailableJobs,
     hasCurrentJob,
     hasMyApplications,
-    fetchAppliedJobs,
     fetchAvailableJobs,
     fetchJobDetails,
     applyForJob,

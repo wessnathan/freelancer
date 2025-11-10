@@ -56,17 +56,24 @@ const page = ref(1);
 const jobStore = useFreelancerJobsStore();
 
 const jobsList = computed(() =>
-  discovery.value === "applied_jobs" ? jobStore.appliedJobs : jobStore.availableJobs
+  discovery.value === "applied_jobs"
+    ? jobStore.appliedJobs
+    : jobStore.availableJobs
 );
 
-async function fetchJobs() {
-  console.log(`Fetching jobs with params: ${JSON.stringify({ page: page.value, match_type: discovery.value })}`);
 
-  if (discovery.value === "applied_jobs") {
-    // Fetch applied jobs separately
-    await jobStore.fetchAppliedJobs();
+  async function fetchJobs() {
+    console.log(`Fetching jobs with params: ${JSON.stringify({ page: page.value, match_type: discovery.value })}`);
+
+    if (discovery.value === "applied_jobs") {
+    await jobStore.fetchAppliedJobsByFreelancer({
+      page: page.value,
+      pageSize: 10,
+      search: props.search || undefined,
+    });
     return;
   }
+
 
   const params: Record<string, any> = {
     page: page.value,
