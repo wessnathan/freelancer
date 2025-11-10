@@ -51,6 +51,15 @@
             hireCandidateDialog = true;
           "
         />
+         <v-list-item
+          v-if="item.status === 'accepted'"
+          title="Unassign Job"
+          prepend-icon="mdi-cancel"
+          @click="
+            selectedItem = item;
+            unassignJobDialog = true;
+          "
+        />
         <v-list-item
           title="Send Message"
           :disabled="!item.payment_verified"
@@ -173,6 +182,24 @@
       navigateTo(`/client/my-jobs/${selectedItem.job_slug}`)
     "
   />
+
+  <!-- unassign job dialog -->
+<AppDialog
+  v-model="unassignJobDialog"
+  title="Confirm"
+  subtitle="Unassign Job"
+  action-button-text="Confirm"
+  :loading="clientJobStore.isLoading"
+  @action-button-click="unassignJob"
+>
+  <p class="text-h6 text-center">
+    Are you sure you want to unassign this job from the freelancer?
+  </p>
+  <p class="text-center text-subtitle-1">
+    This action can be reversed by re-hiring a freelancer.
+  </p>
+</AppDialog>
+
 </template>
 
 <script setup lang="ts">
@@ -208,7 +235,7 @@ const selectedItem = ref<IJobApplication | null>(null);
 const profileInfoDialog = ref(false);
 const hireCandidateDialog = ref(false);
 const postUnsuccesfulModal = ref(false);
-
+const unassignJobDialog = ref(false);
 const clientJobStore = useClientJobsStore();
 const appStore = useAppStore();
 const route = useRoute();
@@ -242,6 +269,28 @@ async function hireCandidate() {
       appStore.showSnackBar({
         type: "success",
         message: "Applicant hired successfully",
+      });
+    });
+}
+
+async function unassignJob() {
+  if (!selectedItem.value) return;
+
+  await clientJobStore
+    .unassignApplication(route.params.id as string, selectedItem.value.user.username)
+    .then(() => {
+      // Reset status to 'pending' or remove assigned freelancer
+      const candidateIndex = clientJobStore.applications.findIndex(
+        c => c.user.username === selectedItem.value?.user.username
+      );
+      if (candidateIndex !== -1) {
+        clientJobStore.applications[candidateIndex].status = 'pending';
+      }
+
+      unassignJobDialog.value = false;
+      appStore.showSnackBar({
+        type: 'success',
+        message: 'Job unassigned successfully',
       });
     });
 }
